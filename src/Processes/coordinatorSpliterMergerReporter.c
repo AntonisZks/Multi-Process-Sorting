@@ -96,25 +96,43 @@ void CSMR_run(CSMR_process* process)
                 close(process->child_to_parent_fd[j][READ_END]);
             }
 
-            printf("Hello from the child process %d\n", getpid());
+            WSRM_process childProcess;
+            WSRM_data childProcessData = 
+            { 
+                process->numberofChildProcesses - i, 
+                process->numberOfRecords,
+                process->inputFileName,
+                process->sortingAlgorithm1,
+                process->sortingAlgorithm2,
+                process->parent_to_child_fd[i][READ_END],
+                process->child_to_parent_fd[i][WRITE_END]
+            };
+
+            WSRM_init(&childProcess, &childProcessData);
+            WSRM_print(&childProcess);
+            WSRM_run(&childProcess);
+
+            WSRM_delete(&childProcess);
 
             // Close the pipe ends used for communication with the parent
-            for (unsigned int j = 0; j < process->numberofChildProcesses; j++) {
-                close(process->parent_to_child_fd[j][READ_END]);
-                close(process->child_to_parent_fd[j][WRITE_END]);
-            }
+            close(process->parent_to_child_fd[i][READ_END]);
+            close(process->child_to_parent_fd[i][WRITE_END]);
+
             return;
         }
+    }
 
-        /* CODE FOR THE PARENT PROCESS */
-        else
-        {
-            // Close any unused pipe ends
-            for (unsigned int j = 0; j < process->numberofChildProcesses; j++) {
-                close(process->parent_to_child_fd[j][READ_END]);
-                close(process->child_to_parent_fd[j][WRITE_END]);
-            }
-        }
+    /* CODE FOR THE PARENT PROCESS */
+
+    // Close any unused pipe ends
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        close(process->parent_to_child_fd[i][READ_END]);
+        close(process->child_to_parent_fd[i][WRITE_END]);
+    }
+
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        DataTo_WSRM dataToSend = { 0, 10 };
+        write(process->parent_to_child_fd[i][WRITE_END], &dataToSend, sizeof(DataTo_WSRM));
     }
 
     // Wait for all the child processes to finish executing

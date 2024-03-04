@@ -8,9 +8,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include "workSpliterResultMerger.h"
 
 #define READ_END  (0)
 #define WRITE_END (1)
+
+typedef DataFrom_CSMR DataTo_WSRM;
 
 /**
  * @brief Structure that represents the data of the Coordinator-Spliter and Result-Merger process
