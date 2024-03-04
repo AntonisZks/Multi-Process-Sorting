@@ -7,7 +7,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 
+#define READ_END  (0)
+#define WRITE_END (1)
+
+/**
+ * @brief Structure that represents the data of the Coordinator-Spliter and Result-Merger process
+ * @author Antonis Zikas
+ * @since 04/03/2024
+ */
 typedef struct CoordinatorSpliterMergerReporterData
 {
     unsigned int numberofChildProcesses;
@@ -18,7 +27,7 @@ typedef struct CoordinatorSpliterMergerReporterData
 } CSMR_data;
 
 /**
- * @brief Structure that represents the Coordinator-Spliter and Result-Merger process
+ * @brief Structure that represents the Coordinator-Spliter and Result-Merger process type
  * @author Antonis Zikas
  * @since 04/03/2024
  */
@@ -34,9 +43,13 @@ typedef struct CoordinatorSpliterMergerReporter
     char* sortingAlgorithm1;
     char* sortingAlgorithm2;
 
+    int** parent_to_child_fd;
+    int** child_to_parent_fd;
+
 } CSMR_process;
 
 void CSMR_init(CSMR_process* process, CSMR_data* process_data);
+void CSMR_delete(CSMR_process* process);
 void CSMR_run(CSMR_process* process);
 
 void CSMR_print(CSMR_process* process);

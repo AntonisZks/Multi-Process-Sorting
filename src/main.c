@@ -40,8 +40,11 @@ int main(int argc, char* argv[])
     CSMR_data rootData = { numberOfChildren, dataFileName, sortingAlgorithm1, sortingAlgorithm2 };
 
     CSMR_init(&rootProcess, &rootData);
+
     CSMR_print(&rootProcess);
     CSMR_run(&rootProcess);
+
+    CSMR_delete(&rootProcess);
     
     return 0;
 }
