@@ -109,7 +109,6 @@ void CSMR_run(CSMR_process* process)
             };
 
             WSRM_init(&childProcess, &childProcessData);
-            WSRM_print(&childProcess);
             WSRM_run(&childProcess);
 
             WSRM_delete(&childProcess);
@@ -130,8 +129,36 @@ void CSMR_run(CSMR_process* process)
         close(process->child_to_parent_fd[i][WRITE_END]);
     }
 
+    // Initialize an array to store the records' range, each child process is going to sort
+    unsigned int** recordsRangeToSort = (unsigned int**)malloc(sizeof(unsigned int*) * process->numberofChildProcesses);
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        DataTo_WSRM dataToSend = { 0, 10 };
+        recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2);
+    }
+
+    // Construct the array
+    unsigned int totalRecords = process->numberOfRecords;
+    unsigned int childProcesses = process->numberofChildProcesses;
+    unsigned int recordsOfEachProcess = totalRecords / childProcesses;
+    unsigned int extraRecords = totalRecords - (recordsOfEachProcess * childProcesses);
+
+    unsigned int counter = 0, extraRecordsCounter = 0;
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        recordsRangeToSort[i][0] = counter;
+        recordsRangeToSort[i][1] = counter + recordsOfEachProcess - 1;
+        
+        // Adding an extra record for sorting, to the first processes
+        if (extraRecordsCounter < extraRecords) {
+            recordsRangeToSort[i][1]++;
+            counter++;
+            extraRecordsCounter++;
+        }
+
+        counter += recordsOfEachProcess;
+    }
+
+    // Sending the appropriate data to the child processes
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        DataTo_WSRM dataToSend = { recordsRangeToSort[i][0], recordsRangeToSort[i][1] };
         write(process->parent_to_child_fd[i][WRITE_END], &dataToSend, sizeof(DataTo_WSRM));
     }
 
@@ -148,7 +175,13 @@ void CSMR_run(CSMR_process* process)
         close(process->child_to_parent_fd[i][READ_END]);
     }
 
-    printf("Hello from the parent process %d\n", process->processId);
+    // Deallocate the memory for the records' range array
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        free(recordsRangeToSort[i]);
+    }
+    free(recordsRangeToSort);
+
+    printf("Hello from the coordinator-spliter process %d\n", process->processId);
 }
 
 void CSMR_print(CSMR_process* process)

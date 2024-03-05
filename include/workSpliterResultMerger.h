@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+#include "sorter.h"
 
 /**
  * @brief Structure that represents the data, the Work-Spliter and Result-Merger 

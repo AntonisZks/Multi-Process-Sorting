@@ -47,7 +47,35 @@ void WSRM_delete(WSRM_process* process)
 
 void WSRM_run(WSRM_process* process)
 {
-    printf("Hello from the child process %d\n", getpid());
+    pid_t wpid;
+    int status;
+
+    // Create the child processes for the Work-Spliter and Result-Merger process
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
+    {
+        if ((process->childProcessesIds[i] = fork()) == -1) {
+            perror("Error creating chidl process");
+            exit(1);
+        }
+        
+        /* CODE FOR THE CHILD PROCESS */
+        else if (process->childProcessesIds[i] == 0)
+        {
+            SRT_run();
+            return;
+        }
+    }
+
+    /* CODE FOR THE PARENT PROCESS */
+
+    // Wait for all the child processes to finish executing
+    while ((wpid = waitpid(-1, &status, 0)) > 0) {
+        if (!WIFEXITED(status)) {
+            printf("Child Process %d terminated abnormally\n", wpid);
+        }
+    }
+
+    printf("Hello, from the work-spliter %d with number of records: %d\n", process->processId, process->recordEndIndex - process->recordStartIndex + 1);
 }
 
 void WSRM_print(WSRM_process* process)
