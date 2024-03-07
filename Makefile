@@ -46,7 +46,7 @@ clean:
 	rmdir bin
 
 run_test:
-	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 4 -e1 mergeSort -e2 quickSort
+	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 mergeSort -e2 quickSort
 
 run_test_v:
-	valgrind --leak-check=full ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 5 -e1 mergeSort -e2 quickSort
+	valgrind --leak-check=full ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 mergeSort -e2 quickSort
