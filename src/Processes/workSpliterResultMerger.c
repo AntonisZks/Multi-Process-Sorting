@@ -90,7 +90,7 @@ void WSRM_run(WSRM_process* process)
 
     /* CODE FOR THE PARENT PROCESS */
 
-    // Close any nused pipe ends
+    // Close any unused pipe ends
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         close(process->parent_to_child_fd[i][READ_END]);
         close(process->child_to_parent_fd[i][WRITE_END]);
@@ -104,6 +104,13 @@ void WSRM_run(WSRM_process* process)
     }
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         if ((recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
+    }
+
+    // Initialize the array to store the sorting method of each sorter
+    char** sortingMethods = (char**)malloc(sizeof(char*) * process->numberofChildProcesses);
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        if (i % 2 == 0) sortingMethods[i] = process->sortingAlgorithm1;
+        else            sortingMethods[i] = process->sortingAlgorithm2;
     }
 
     // Construct the array
@@ -134,7 +141,7 @@ void WSRM_run(WSRM_process* process)
         {
             process->numberOfRecords,
             process->inputFileName,
-            process->sortingAlgorithm1,
+            sortingMethods[i],
             recordsRangeToSort[i][0],
             recordsRangeToSort[i][1]
         };
@@ -154,6 +161,9 @@ void WSRM_run(WSRM_process* process)
         close(process->parent_to_child_fd[i][WRITE_END]);
         close(process->child_to_parent_fd[i][READ_END]);
     }
+
+    // Deallocate the memory used for the sorting methods array
+    free(sortingMethods);
 
     // Deallocate the memory used for the records' range arrays
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
