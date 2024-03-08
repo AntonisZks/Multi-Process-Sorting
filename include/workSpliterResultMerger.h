@@ -13,6 +13,8 @@
 #define READ_END  (0)
 #define WRITE_END (1)
 
+typedef DataFrom_WSRM DataTo_Srt;
+
 /**
  * @brief Structure that represents the data, the Work-Spliter and Result-Merger 
  * is going to receive from the Coordinator-Spliter and Merger-Reporter

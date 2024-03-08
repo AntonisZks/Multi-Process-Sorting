@@ -9,7 +9,16 @@ void SRT_init(SRT_process* process, SRT_data* process_data)
 
     process->processId = getpid();
 
+    DataFrom_WSRM receivedData;
+    read(process->read_fd, &receivedData, sizeof(DataFrom_WSRM));
 
+    process->numberOfRecords = receivedData.numberOfRecords;
+    process->inputFileName = receivedData.inputFileName;
+
+    process->sortingAlgorithm = receivedData.sortingAlgorithm;
+
+    process->recordStartIndex = receivedData.recordStartIndex;
+    process->recordEndIndex = receivedData.recordEndIndex;
 }
 
 void SRT_run(SRT_process* process)
