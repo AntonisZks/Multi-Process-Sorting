@@ -8,11 +8,14 @@ SRC_DIR = src
 OBJ_DIR = build
 EXE_DIR = bin
 
-# Prossesing directory constant
-PRS_DIR = Processes
+# Prossesing and Sorting directories constants
+PRS_DIR = Processing
+SRT_DIR = Sorting
 
 # Compilation command
-all: build bin $(EXE_DIR)/mysort
+all: build bin $(EXE_DIR)/mysort $(EXE_DIR)/MergeSort
+
+# MAIN APPLICATION
 
 $(EXE_DIR)/mysort: $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o
 	$(CC) $(FLAGS) -o $(EXE_DIR)/mysort $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o
@@ -29,6 +32,14 @@ $(OBJ_DIR)/workSpliterResultMerger.o: $(SRC_DIR)/$(PRS_DIR)/workSpliterResultMer
 $(OBJ_DIR)/sorter.o: $(SRC_DIR)/$(PRS_DIR)/sorter.c $(HDR_DIR)/sorter.h
 	$(CC) $(FLAGS) -o $(OBJ_DIR)/sorter.o -c $(SRC_DIR)/$(PRS_DIR)/sorter.c
 
+# MERGE SORT
+
+$(EXE_DIR)/MergeSort: $(OBJ_DIR)/MergeSort.o
+	$(CC) $(FLAGS) -o $(EXE_DIR)/MergeSort $(OBJ_DIR)/MergeSort.o
+
+$(OBJ_DIR)/MergeSort.o: $(SRC_DIR)/$(SRT_DIR)/MergeSort.c
+	$(CC) $(FLAGS) -o $(OBJ_DIR)/MergeSort.o -c $(SRC_DIR)/$(SRT_DIR)/MergeSort.c
+
 .PHONY: clean
 
 # Create the build directory for the object files
@@ -42,11 +53,12 @@ bin:
 # Commands that cleans the workspace
 clean:
 	rm $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o $(EXE_DIR)/mysort
+	rm $(OBJ_DIR)/MergeSort.o $(EXE_DIR)/MergeSort
 	rmdir build
 	rmdir bin
 
 run_test:
-	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 4 -e1 mergeSort -e2 quickSort
+	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort
 
 run_test_v:
-	valgrind --leak-check=full ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 mergeSort -e2 quickSort
+	valgrind -s ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort

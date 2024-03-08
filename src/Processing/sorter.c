@@ -23,7 +23,28 @@ void SRT_init(SRT_process* process, SRT_data* process_data)
 
 void SRT_run(SRT_process* process)
 {
-    printf("Hello, from the sorter %d\n", getpid());
+    char programToRun[100];
+    char* argv[6];
+    char filename[50], recordsCount[20], startIndex[20], endIndex[20];
+
+    sprintf(programToRun, "./bin/%s", process->sortingAlgorithm);
+
+    strcpy(filename, process->inputFileName);
+    sprintf(recordsCount, "%d", process->numberOfRecords);
+    sprintf(startIndex, "%d", process->recordStartIndex);
+    sprintf(endIndex, "%d", process->recordEndIndex);
+
+    argv[0] = programToRun;
+    argv[1] = filename;
+    argv[2] = recordsCount;
+    argv[3] = startIndex;
+    argv[4] = endIndex;
+    argv[5] = NULL;
+
+    execv(programToRun, argv);
+
+    perror("Sorting Execution Error");
+    exit(1);
 }
 
 void SRT_print(SRT_process* process)
