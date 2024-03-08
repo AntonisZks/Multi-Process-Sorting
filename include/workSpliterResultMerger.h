@@ -10,6 +10,9 @@
 #include <sys/wait.h>
 #include "sorter.h"
 
+#define READ_END  (0)
+#define WRITE_END (1)
+
 /**
  * @brief Structure that represents the data, the Work-Spliter and Result-Merger 
  * is going to receive from the Coordinator-Spliter and Merger-Reporter

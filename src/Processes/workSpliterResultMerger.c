@@ -12,14 +12,14 @@ void WSRM_init(WSRM_process* process, WSRM_data* process_data)
 
     process->processId = getpid();
     process->numberOfRecords = process_data->numberOfRecords;
-    process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses);
+    if ((process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
 
-    process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
-    process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
+    if ((process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
+    if ((process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
     
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2);
-        process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2);
+        if ((process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
+        if ((process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
     }
 
     process->read_fd = process_data->read_fd;
@@ -50,6 +50,14 @@ void WSRM_run(WSRM_process* process)
     pid_t wpid;
     int status;
 
+    // Create the pipes for intel process communication
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        if (pipe(process->parent_to_child_fd[i]) == -1 || pipe(process->child_to_parent_fd[i]) == -1) { // Checking for errors
+            perror("Error creating communication pipes");
+            exit(1);
+        }
+    }
+
     // Create the child processes for the Work-Spliter and Result-Merger process
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
     {
@@ -61,18 +69,46 @@ void WSRM_run(WSRM_process* process)
         /* CODE FOR THE CHILD PROCESS */
         else if (process->childProcessesIds[i] == 0)
         {
-            SRT_run();
+            // Close any unsed pipe ends
+            close(process->parent_to_child_fd[i][WRITE_END]);
+            close(process->child_to_parent_fd[i][READ_END]);
+
+            SRT_process childProcess;
+            SRT_data childProcessData = { process->parent_to_child_fd[i][READ_END], process->child_to_parent_fd[i][WRITE_END] };
+
+            SRT_init(&childProcess, &childProcessData);
+            //SRT_print(&childProcess);
+            SRT_run(&childProcess);
+
+            // Close the pipe ends used for communication with the parent
+            close(process->parent_to_child_fd[i][READ_END]);
+            close(process->child_to_parent_fd[i][WRITE_END]);
+
             return;
         }
     }
 
     /* CODE FOR THE PARENT PROCESS */
 
+    // Close any nused pipe ends
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        close(process->parent_to_child_fd[i][READ_END]);
+        close(process->child_to_parent_fd[i][WRITE_END]);
+    }
+
+
+
     // Wait for all the child processes to finish executing
     while ((wpid = waitpid(-1, &status, 0)) > 0) {
         if (!WIFEXITED(status)) {
             printf("Child Process %d terminated abnormally\n", wpid);
         }
+    }
+
+    // Close the pipe ends used for communication with the child processes
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        close(process->parent_to_child_fd[i][WRITE_END]);
+        close(process->child_to_parent_fd[i][READ_END]);
     }
 
     printf("Hello, from the work-spliter %d with number of records: %d\n", process->processId, process->recordEndIndex - process->recordStartIndex + 1);

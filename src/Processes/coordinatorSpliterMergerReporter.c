@@ -39,16 +39,16 @@ void CSMR_init(CSMR_process* process, CSMR_data* process_data)
     // Initialize the process id and the records count in the input file
     process->processId = getpid();
     process->numberOfRecords = getRecordsCountInFile(process->inputFileName);
-    process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses);
+    if ((process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
 
     // Initialize the pipes for intel-process communication
-    process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
-    process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
+    if ((process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
+    if ((process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
 
     // Allocating memory for the pipes communication arrays
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2);
-        process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2);
+        if ((process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
+        if ((process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
     }
 }
 
@@ -131,8 +131,12 @@ void CSMR_run(CSMR_process* process)
 
     // Initialize an array to store the records' range, each child process is going to sort
     unsigned int** recordsRangeToSort = (unsigned int**)malloc(sizeof(unsigned int*) * process->numberofChildProcesses);
+    if (recordsRangeToSort == NULL) {
+        perror("Memory Error"); 
+        exit(1);
+    }
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2);
+        if ((recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
     }
 
     // Construct the array
