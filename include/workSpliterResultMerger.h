@@ -10,11 +10,6 @@
 #include <sys/wait.h>
 #include "sorter.h"
 
-#define READ_END  (0)
-#define WRITE_END (1)
-
-typedef DataFrom_WSRM DataTo_Sorter;
-
 /**
  * @brief Structure that represents the data, the Work-Spliter and Result-Merger 
  * is going to receive from the Coordinator-Spliter and Merger-Reporter
@@ -24,13 +19,6 @@ typedef DataFrom_WSRM DataTo_Sorter;
  */
 typedef struct DataFromCoordinatorSpliterMergerReporter
 {
-    unsigned int numberofChildProcesses;
-    unsigned int numberOfRecords;
-
-    char* inputFileName;
-    char* sortingAlgorithm1;
-    char* sortingAlgorithm2;
-
     unsigned int recordStartIndex;
     unsigned int recordEndIndex;
 
@@ -43,6 +31,13 @@ typedef struct DataFromCoordinatorSpliterMergerReporter
  */
 typedef struct WorkSpliterResultMergerData
 {
+    unsigned int numberofChildProcesses;
+    unsigned int numberOfRecords;
+
+    char* inputFileName;
+    char* sortingAlgorithm1;
+    char* sortingAlgorithm2;
+
     int read_fd, write_fd;
 
 } WSRM_data;

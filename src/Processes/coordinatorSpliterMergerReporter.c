@@ -39,16 +39,16 @@ void CSMR_init(CSMR_process* process, CSMR_data* process_data)
     // Initialize the process id and the records count in the input file
     process->processId = getpid();
     process->numberOfRecords = getRecordsCountInFile(process->inputFileName);
-    if ((process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
+    process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses);
 
     // Initialize the pipes for intel-process communication
-    if ((process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
-    if ((process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
+    process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
+    process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses);
 
     // Allocating memory for the pipes communication arrays
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        if ((process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
-        if ((process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
+        process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2);
+        process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2);
     }
 }
 
@@ -97,10 +97,18 @@ void CSMR_run(CSMR_process* process)
             }
 
             WSRM_process childProcess;
-            WSRM_data childProcessData = { process->parent_to_child_fd[i][READ_END], process->child_to_parent_fd[i][WRITE_END] };
+            WSRM_data childProcessData = 
+            { 
+                process->numberofChildProcesses - i, 
+                process->numberOfRecords,
+                process->inputFileName,
+                process->sortingAlgorithm1,
+                process->sortingAlgorithm2,
+                process->parent_to_child_fd[i][READ_END],
+                process->child_to_parent_fd[i][WRITE_END]
+            };
 
             WSRM_init(&childProcess, &childProcessData);
-            WSRM_print(&childProcess);
             WSRM_run(&childProcess);
 
             WSRM_delete(&childProcess);
@@ -123,12 +131,8 @@ void CSMR_run(CSMR_process* process)
 
     // Initialize an array to store the records' range, each child process is going to sort
     unsigned int** recordsRangeToSort = (unsigned int**)malloc(sizeof(unsigned int*) * process->numberofChildProcesses);
-    if (recordsRangeToSort == NULL) {
-        perror("Memory Error"); 
-        exit(1);
-    }
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        if ((recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
+        recordsRangeToSort[i] = (unsigned int*)malloc(sizeof(int) * 2);
     }
 
     // Construct the array
@@ -138,8 +142,7 @@ void CSMR_run(CSMR_process* process)
     unsigned int extraRecords = totalRecords - (recordsOfEachProcess * childProcesses);
 
     unsigned int counter = 0, extraRecordsCounter = 0;
-    for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
-    {
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         recordsRangeToSort[i][0] = counter;
         recordsRangeToSort[i][1] = counter + recordsOfEachProcess - 1;
         
@@ -155,16 +158,7 @@ void CSMR_run(CSMR_process* process)
 
     // Sending the appropriate data to the child processes
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
-        DataTo_WSRM dataToSend = 
-        {
-            process->numberofChildProcesses - i,
-            process->numberOfRecords,
-            process->inputFileName,
-            process->sortingAlgorithm1,
-            process->sortingAlgorithm2, 
-            recordsRangeToSort[i][0],
-            recordsRangeToSort[i][1]
-        };
+        DataTo_WSRM dataToSend = { recordsRangeToSort[i][0], recordsRangeToSort[i][1] };
         write(process->parent_to_child_fd[i][WRITE_END], &dataToSend, sizeof(DataTo_WSRM));
     }
 
