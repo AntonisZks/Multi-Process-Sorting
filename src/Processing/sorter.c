@@ -27,6 +27,11 @@ void SRT_run(SRT_process* process)
     char* argv[6];
     char filename[50], recordsCount[20], startIndex[20], endIndex[20];
 
+    // Checking if the start and end index are valid (start should be lower than or equal to end)
+    if (process->recordStartIndex > process->recordEndIndex) {
+        return;
+    }
+
     sprintf(programToRun, "./bin/%s", process->sortingAlgorithm);
 
     strcpy(filename, process->inputFileName);

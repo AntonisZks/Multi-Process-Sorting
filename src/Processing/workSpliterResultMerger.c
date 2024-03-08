@@ -62,7 +62,7 @@ void WSRM_run(WSRM_process* process)
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
     {
         if ((process->childProcessesIds[i] = fork()) == -1) {
-            perror("Error creating chidl process");
+            perror("Error creating child process");
             exit(1);
         }
         

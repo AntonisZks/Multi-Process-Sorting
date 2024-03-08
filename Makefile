@@ -58,7 +58,7 @@ clean:
 	rmdir bin
 
 run_test:
-	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort
+	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 1 -e1 MergeSort -e2 MergeSort
 
 run_test_v:
 	valgrind -s ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort
