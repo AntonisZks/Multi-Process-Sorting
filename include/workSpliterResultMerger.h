@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include "sorter.h"
+#include "record.h"
 
 #define READ_END  (0)
 #define WRITE_END (1)

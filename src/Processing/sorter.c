@@ -46,6 +46,7 @@ void SRT_run(SRT_process* process)
     argv[4] = endIndex;
     argv[5] = NULL;
 
+    dup2(process->write_fd, STDOUT_FILENO);
     execv(programToRun, argv);
 
     perror("Sorting Execution Error");

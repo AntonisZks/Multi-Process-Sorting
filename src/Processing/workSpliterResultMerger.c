@@ -158,11 +158,38 @@ void WSRM_run(WSRM_process* process)
         }
     }
 
+    // Reading the sorted records the sorter has sent back to the work-spliter
+    Record** sortedRecords = (Record**)malloc(sizeof(Record*) * process->numberofChildProcesses);
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        sortedRecords[i] = (Record*)malloc(sizeof(Record) * (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1));
+    }
+
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
+    {
+        unsigned int recordsCount = (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1); // Number of records of the current child process (sorter)
+
+        // Reading every records from the current child process
+        for (unsigned int j = 0; j < recordsCount; j++) {
+            Record currentRecord;
+            read(process->child_to_parent_fd[i][READ_END], &currentRecord, sizeof(Record));
+
+            //printRecord(currentRecord); // TODO: Figure out why this is not working!
+            //printf("%s %s %d %s\n", currentRecord.lastName, currentRecord.firstName, currentRecord.custid, currentRecord.postCode);
+            sortedRecords[i][j] = currentRecord;
+        }
+    }
+
     // Close the pipe ends used for communication with the child processes
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         close(process->parent_to_child_fd[i][WRITE_END]);
         close(process->child_to_parent_fd[i][READ_END]);
     }
+
+    // Deallocate the memory used for the sorted records arrays
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        free(sortedRecords[i]);
+    }
+    free(sortedRecords);
 
     // Deallocate the memory used for the sorting methods array
     free(sortingMethods);
