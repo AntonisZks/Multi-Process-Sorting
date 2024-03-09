@@ -99,6 +99,7 @@ void CSMR_run(CSMR_process* process)
             WSRM_process childProcess;
             WSRM_data childProcessData = 
             { 
+                i + 1,
                 process->numberofChildProcesses - i, 
                 process->numberOfRecords,
                 process->inputFileName,

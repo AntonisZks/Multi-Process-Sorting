@@ -37,6 +37,7 @@ typedef struct DataFromCoordinatorSpliterMergerReporter
  */
 typedef struct WorkSpliterResultMergerData
 {
+    unsigned int processIndex;
     unsigned int numberofChildProcesses;
     unsigned int numberOfRecords;
 
@@ -55,8 +56,10 @@ typedef struct WorkSpliterResultMergerData
  */
 typedef struct WorkSpliterResultMerger
 {
+    unsigned int processIndex;
     unsigned int numberofChildProcesses;
     unsigned int numberOfRecords;
+    unsigned int processRecords;
 
     pid_t* childProcessesIds;
     pid_t  processId;

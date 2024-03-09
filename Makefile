@@ -19,7 +19,7 @@ all: build bin $(EXE_DIR)/mysort $(EXE_DIR)/MergeSort
 # MAIN APPLICATION
 
 $(EXE_DIR)/mysort: $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o $(OBJ_DIR)/record.o
-	$(CC) $(FLAGS) -o $(EXE_DIR)/mysort $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o
+	$(CC) $(FLAGS) -o $(EXE_DIR)/mysort $(OBJ_DIR)/main.o $(OBJ_DIR)/coordinatorSpliterMergerReporter.o $(OBJ_DIR)/workSpliterResultMerger.o $(OBJ_DIR)/sorter.o $(OBJ_DIR)/record.o
 
 $(OBJ_DIR)/main.o: $(SRC_DIR)/main.c $(HDR_DIR)/coordinatorSpliterMergerReporter.h $(HDR_DIR)/record.h
 	$(CC) $(FLAGS) -o $(OBJ_DIR)/main.o -c $(SRC_DIR)/main.c
@@ -62,7 +62,7 @@ clean:
 	rmdir bin
 
 run_test:
-	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort
+	./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 4 -e1 MergeSort -e2 MergeSort
 
 run_test_v:
-	valgrind --leak-check=full ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 2 -e1 MergeSort -e2 MergeSort
+	valgrind --leak-check=full ./$(EXE_DIR)/mysort -i 'Data/voters50.bin' -k 1 -e1 MergeSort -e2 MergeSort

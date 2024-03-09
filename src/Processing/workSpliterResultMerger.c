@@ -2,8 +2,81 @@
 
 #include "../../include/workSpliterResultMerger.h"
 
+static void merge(Record* leftArray, unsigned int leftArraySize, Record* rightArray, unsigned int rightArraySize, Record* resultArray)
+{
+    unsigned int leftArrayIndex = 0, rightArrayIndex = 0, resultArrayIndex = 0;
+
+    while (leftArrayIndex < leftArraySize && rightArrayIndex < rightArraySize)
+    {
+        if (isLowerThan(leftArray[leftArrayIndex], rightArray[rightArrayIndex])) {
+            resultArray[resultArrayIndex++] = leftArray[leftArrayIndex++];
+        } else {
+            resultArray[resultArrayIndex++] = rightArray[rightArrayIndex++];
+        }
+    }
+
+    while (leftArrayIndex < leftArraySize) {
+        resultArray[resultArrayIndex++] = leftArray[leftArrayIndex++];
+    }
+    while (rightArrayIndex < rightArraySize) {
+        resultArray[resultArrayIndex++] = rightArray[rightArrayIndex++];
+    }
+}
+
+static Record* mergeRecords(WSRM_process process, Record** records, unsigned int* recordsCounts)
+{
+    Record* mergedRecords = (Record*)malloc(sizeof(Record) * process.processRecords);
+
+    // Check if there is only one child process. If so the sorted records from that, is the result merged array
+    if (process.numberofChildProcesses == 1) {
+        for (unsigned int i = 0; i < process.numberOfRecords; i++) {
+            mergedRecords[i] = records[0][i];
+        }
+
+        return mergedRecords;
+    }
+
+    // Else merge the result of each child process to the result array
+    unsigned int leftArraySize  = recordsCounts[0];
+    unsigned int rightArraySize = recordsCounts[1];
+    Record* leftArray  = records[0];
+    Record* rightArray = records[1];
+    Record* result = (Record*)malloc(sizeof(Record) * (leftArraySize + rightArraySize));
+
+    unsigned int processCounter = 1;
+    do {
+        
+        merge(leftArray, leftArraySize, rightArray, rightArraySize, result);
+        processCounter++;
+
+        // If there are more child processes, update the arrays and do the merging again
+        if (processCounter < process.numberofChildProcesses)
+        {
+            // Reassign the arrays and update their size
+            leftArray = (Record*)malloc(sizeof(Record) * (leftArraySize + rightArraySize));
+            for (unsigned int i = 0; i < (leftArraySize + rightArraySize); i++) {
+                leftArray[i] = result[i];
+            }
+            leftArraySize  += rightArraySize;
+            rightArray = records[processCounter];
+            rightArraySize = recordsCounts[processCounter];
+        }
+    } 
+    while (processCounter < process.numberofChildProcesses);
+    
+    // Copy the elements of the result array to the merged array
+    for (unsigned int i = 0; i < process.processRecords; i++) {
+        mergedRecords[i] = result[i];
+    }
+
+    free(result);
+
+    return mergedRecords;
+}
+
 void WSRM_init(WSRM_process* process, WSRM_data* process_data)
 {
+    process->processIndex = process_data->processIndex;
     process->inputFileName = process_data->inputFileName;
     process->numberofChildProcesses = process_data->numberofChildProcesses;
 
@@ -30,6 +103,7 @@ void WSRM_init(WSRM_process* process, WSRM_data* process_data)
 
     process->recordStartIndex = receivedData.recordStartIndex;
     process->recordEndIndex = receivedData.recordEndIndex;
+    process->processRecords = receivedData.recordEndIndex - receivedData.recordStartIndex + 1;
 }
 
 void WSRM_delete(WSRM_process* process)
@@ -47,6 +121,9 @@ void WSRM_delete(WSRM_process* process)
 
 void WSRM_run(WSRM_process* process)
 {
+    // sleep(process->processIndex);
+    // printf("\n-----Work-Splitter %d is running-----\n\n", process->processIndex);
+
     pid_t wpid;
     int status;
 
@@ -160,6 +237,7 @@ void WSRM_run(WSRM_process* process)
 
     // Reading the sorted records the sorter has sent back to the work-spliter
     Record** sortedRecords = (Record**)malloc(sizeof(Record*) * process->numberofChildProcesses);
+    unsigned int* recordsCounts = (unsigned int*)malloc(sizeof(unsigned int) * process->numberofChildProcesses);
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         sortedRecords[i] = (Record*)malloc(sizeof(Record) * (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1));
     }
@@ -167,17 +245,25 @@ void WSRM_run(WSRM_process* process)
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
     {
         unsigned int recordsCount = (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1); // Number of records of the current child process (sorter)
+        recordsCounts[i] = recordsCount;
 
         // Reading every records from the current child process
         for (unsigned int j = 0; j < recordsCount; j++) {
             Record currentRecord;
             read(process->child_to_parent_fd[i][READ_END], &currentRecord, sizeof(Record));
 
-            //printRecord(currentRecord); // TODO: Figure out why this is not working!
-            //printf("%s %s %d %s\n", currentRecord.lastName, currentRecord.firstName, currentRecord.custid, currentRecord.postCode);
             sortedRecords[i][j] = currentRecord;
         }
     }
+
+    //Record* mergedRecords = mergeRecords(*process, sortedRecords, recordsCounts); // FIXME: Issue here, causes memory errors 
+
+    // for (unsigned int i = 0; i < process->processRecords; i++) {
+    //     printf("%d) ", i + 1); printRecord(mergedRecords[i]);
+    // }
+
+    //free(mergedRecords);
+    free(recordsCounts);
 
     // Close the pipe ends used for communication with the child processes
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
