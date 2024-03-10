@@ -1,6 +1,6 @@
 # Operating System Multi-Process Executing
 
-This is a short application mad with C programming language, that its goal is to sort the records inside a specific file, and to print them to the tty terminal. The sorting process though is a little different from the usual ones. The real goal of the application is to test multi-process executing, the OS provides and to combine this idea with the first goal, to sort different files of records. The application works as follows:
+This is a short application made with C programming language, that its goal is to sort the records inside a specific file, and to print them to the tty terminal. The sorting process though is a little different from the usual ones. The real goal of the application is to test multi-process executing, the OS provides and to combine this idea with the first goal, to sort different files of records. The application works as follows:
 
 ## How to download the application
 To download the application you can either download the [zip file](https://github.com/AntonisZks/Multi-Process-Sorting/archive/refs/heads/main.zip) containing all the code and data files, or clone its url using the following command:
