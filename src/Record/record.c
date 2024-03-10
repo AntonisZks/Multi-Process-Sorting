@@ -34,5 +34,5 @@ boolean isLowerThan(const Record record1, const Record record2)
  * @param record the record to be printed
  */
 void printRecord(const Record record) {
-    printf("%s %s %d %s\n", record.lastName, record.firstName, record.custid, record.postCode);
+    printf("%-13s %-13s %-10d %s\n", record.lastName, record.firstName, record.custid, record.postCode);
 }
