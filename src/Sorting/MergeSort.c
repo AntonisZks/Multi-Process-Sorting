@@ -22,9 +22,9 @@ int main(int argc, char* argv[])
     Record* records = getRecords(argv);
     unsigned int recordsCounter = atoi(argv[4]) - atoi(argv[3]) + 1;
 
-    //printf("Size: %d\n", atoi(argv[4]) - atoi(argv[3])+1);
-    mergeSort(records, 0, recordsCounter - 1);
+    mergeSort(records, 0, recordsCounter - 1); // Sort the records using MergeSort
 
+    // Send the sorted records nack to the parent process
     for (unsigned int i = 0; i < recordsCounter; i++) {
         write(STDOUT_FILENO, &records[i], sizeof(Record));
     }

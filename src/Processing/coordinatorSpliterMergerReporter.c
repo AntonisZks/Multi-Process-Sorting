@@ -3,6 +3,78 @@
 #include "../../include/record.h"
 #include "../../include/coordinatorSpliterMergerReporter.h"
 
+static void merge(Record* leftArray, unsigned int leftArraySize, Record* rightArray, unsigned int rightArraySize, Record* resultArray)
+{
+    unsigned int leftArrayIndex = 0, rightArrayIndex = 0, resultArrayIndex = 0;
+
+    while (leftArrayIndex < leftArraySize && rightArrayIndex < rightArraySize)
+    {
+        if (isLowerThan(leftArray[leftArrayIndex], rightArray[rightArrayIndex])) resultArray[resultArrayIndex++] = leftArray[leftArrayIndex++];
+        else resultArray[resultArrayIndex++] = rightArray[rightArrayIndex++];
+    }
+
+    while (leftArrayIndex  < leftArraySize)  resultArray[resultArrayIndex++] = leftArray[leftArrayIndex++];
+    while (rightArrayIndex < rightArraySize) resultArray[resultArrayIndex++] = rightArray[rightArrayIndex++];
+}
+
+static Record* mergeRecords(CSMR_process process, Record** records, unsigned int* recordsCounts)
+{
+    Record* mergedRecords = (Record*)malloc(sizeof(Record) * process.processRecords);
+
+    // Check if there is only one child process. If so the sorted records from that, is the result merged array
+    if (process.numberofChildProcesses == 1) {
+        for (unsigned int i = 0; i < process.numberOfRecords; i++) {
+            mergedRecords[i] = records[0][i];
+        }
+
+        return mergedRecords;
+    }
+
+    unsigned int leftArraySize  = recordsCounts[0];
+    unsigned int rightArraySize = recordsCounts[1];
+    
+    Record* leftArray  = (Record*)malloc(sizeof(Record) * leftArraySize);
+    Record* rightArray = (Record*)malloc(sizeof(Record) * rightArraySize);
+    Record* result     = (Record*)malloc(sizeof(Record) * (leftArraySize + rightArraySize));
+
+
+    for (unsigned int i = 0; i < recordsCounts[0]; i++) leftArray[i]  = records[0][i];
+    for (unsigned int i = 0; i < recordsCounts[1]; i++) rightArray[i] = records[1][i];
+
+    for (unsigned int i = 0; i < process.numberofChildProcesses - 1; i++)
+    {
+        merge(leftArray, leftArraySize, rightArray, rightArraySize, result);
+
+        if (i < process.numberofChildProcesses - 2) 
+        {
+            leftArraySize += rightArraySize;
+            leftArray = (Record*)realloc(leftArray, sizeof(Record) * leftArraySize);
+            for (unsigned int j = 0; j < leftArraySize; j++) {
+                leftArray[j] = result[j];
+            }
+
+            rightArraySize = recordsCounts[i + 2];
+            rightArray = (Record*)realloc(rightArray, sizeof(Record) * rightArraySize);
+            for (unsigned int j = 0; j < rightArraySize; j++) {
+                rightArray[j] = records[i + 2][j];
+            }
+            
+            unsigned int newResultArraySize = leftArraySize + rightArraySize;
+            result = (Record*)realloc(result, sizeof(Record) * newResultArraySize);
+        }
+    }
+
+    for (unsigned int i = 0; i < process.processRecords; i++) {
+        mergedRecords[i] = result[i];
+    }
+
+    free(leftArray);
+    free(rightArray);
+    free(result);
+
+    return mergedRecords;
+}
+
 static unsigned int getRecordsCountInFile(const char* filename)
 {
     unsigned int numofRecords;
@@ -39,6 +111,7 @@ void CSMR_init(CSMR_process* process, CSMR_data* process_data)
     // Initialize the process id and the records count in the input file
     process->processId = getpid();
     process->numberOfRecords = getRecordsCountInFile(process->inputFileName);
+    process->processRecords = process->numberOfRecords;
     if ((process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
 
     // Initialize the pipes for intel-process communication
@@ -174,11 +247,48 @@ void CSMR_run(CSMR_process* process)
         }
     }
 
+    // Reading the sorted records the work-spliter and result-merger has sent back to the cooridinator-spliter
+    Record** sortedRecords = (Record**)malloc(sizeof(Record*) * process->numberofChildProcesses);
+    unsigned int* recordsCounts = (unsigned int*)malloc(sizeof(unsigned int) * process->numberofChildProcesses);
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        sortedRecords[i] = (Record*)malloc(sizeof(Record) * (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1));
+    }
+
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++)
+    {
+        unsigned int recordsCount = (recordsRangeToSort[i][1] - recordsRangeToSort[i][0] + 1);
+        recordsCounts[i] = recordsCount;
+
+        // Reading every record from the current child process
+        for (unsigned int j = 0; j < recordsCount; j++) {
+            Record currentRecord;
+            read(process->child_to_parent_fd[i][READ_END], &currentRecord, sizeof(Record));
+
+            sortedRecords[i][j] = currentRecord;
+        }
+    }
+
+    Record* mergedRecords = mergeRecords(*process, sortedRecords, recordsCounts);
+
+    for (unsigned int i = 0; i < process->processRecords; i++) {
+        printRecord(mergedRecords[i]);
+    }
+
+    free(mergedRecords);
+    free(recordsCounts);
+
     // Close the pipe ends used for communication with the child processes
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         close(process->parent_to_child_fd[i][WRITE_END]);
         close(process->child_to_parent_fd[i][READ_END]);
     }
+
+    // Deallocate the memory used for the sorted records arrays
+    for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
+        free(sortedRecords[i]);
+    }
+    free(sortedRecords);
+
 
     // Deallocate the memory for the records' range array
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
