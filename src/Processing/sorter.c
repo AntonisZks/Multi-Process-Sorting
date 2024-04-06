@@ -2,6 +2,12 @@
 
 #include "../../include/sorter.h"
 
+/**
+ * @brief Initializes the Sorter by applying to it the appropriate data
+ * 
+ * @param process the current Sorter process
+ * @param process_data the data of the current Sorter process
+ */
 void SRT_init(SRT_process* process, SRT_data* process_data)
 {
     process->read_fd  = process_data->read_fd;
@@ -21,6 +27,10 @@ void SRT_init(SRT_process* process, SRT_data* process_data)
     process->recordEndIndex = receivedData.recordEndIndex;
 }
 
+/**
+ * @brief Runs the Sorter process
+ * @param process the current Sorter process
+ */
 void SRT_run(SRT_process* process)
 {
     char programToRun[100];
@@ -53,6 +63,10 @@ void SRT_run(SRT_process* process)
     exit(1);
 }
 
+/**
+ * @brief Represents the Sorter process
+ * @param process the current Sorter process
+ */
 void SRT_print(SRT_process* process)
 {
     printf("\nHello from the Sorter %d with:\n", process->processId);

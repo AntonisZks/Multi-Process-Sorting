@@ -2,16 +2,27 @@
 
 #include "../../include/workSpliterResultMerger.h"
 
+/**
+ * @brief Merges the records from two arrays into a final result array
+ * 
+ * @param leftArray the first array of the merge process
+ * @param leftArraySize the size of the first array
+ * @param rightArray the second array of the merge process
+ * @param rightArraySize the size of the second array
+ * @param resultArray the final merged Array
+ */
 static void merge(Record* leftArray, unsigned int leftArraySize, Record* rightArray, unsigned int rightArraySize, Record* resultArray)
 {
     unsigned int leftArrayIndex = 0, rightArrayIndex = 0, resultArrayIndex = 0;
 
     while (leftArrayIndex < leftArraySize && rightArrayIndex < rightArraySize)
     {
-        if (isLowerThan(leftArray[leftArrayIndex], rightArray[rightArrayIndex])) {
+        Record leftRecord  = leftArray[leftArrayIndex];
+        Record rightRecord = rightArray[rightArrayIndex];
+
+        if (isLowerThan(leftRecord, rightRecord)) {
             resultArray[resultArrayIndex++] = leftArray[leftArrayIndex++];
-        }
-        else {
+        } else {
             resultArray[resultArrayIndex++] = rightArray[rightArrayIndex++];
         }
     }
@@ -25,6 +36,13 @@ static void merge(Record* leftArray, unsigned int leftArraySize, Record* rightAr
     }
 }
 
+/**
+ * @brief Merges all the sorted records from the different child processes into one result array
+ * 
+ * @param process the current process of the application
+ * @param records the array containing all the sorted records of all the child processes
+ * @param recordsCounts the number of records each child process has sorted
+ */
 static Record* mergeRecords(WSRM_process process, Record** records, unsigned int* recordsCounts)
 {
     Record* mergedRecords = (Record*)malloc(sizeof(Record) * process.processRecords);
@@ -38,43 +56,72 @@ static Record* mergeRecords(WSRM_process process, Record** records, unsigned int
         return mergedRecords;
     }
 
+    // Else merge all the individual arrays into one general result array
     unsigned int leftArraySize  = recordsCounts[0];
     unsigned int rightArraySize = recordsCounts[1];
+
+    // Construct the first pair of arrays
     Record* leftArray  = (Record*)malloc(sizeof(Record) * leftArraySize);
     Record* rightArray = (Record*)malloc(sizeof(Record) * rightArraySize);
     Record* result     = (Record*)malloc(sizeof(Record) * (leftArraySize + rightArraySize));
 
+    if (leftArray == NULL || rightArray == NULL || result == NULL) { // Check for any errors
+        perror("Memory Error");
+        exit(1);
+    }
 
     for (unsigned int i = 0; i < recordsCounts[0]; i++) leftArray[i]  = records[0][i];
     for (unsigned int i = 0; i < recordsCounts[1]; i++) rightArray[i] = records[1][i];
 
+    // Merging Process
     for (unsigned int i = 0; i < process.numberofChildProcesses - 1; i++)
     {
         merge(leftArray, leftArraySize, rightArray, rightArraySize, result);
 
-        if (i < process.numberofChildProcesses - 2) 
-        {
-            leftArraySize += rightArraySize;
-            leftArray = (Record*)realloc(leftArray, sizeof(Record) * leftArraySize);
-            for (unsigned int j = 0; j < leftArraySize; j++) {
-                leftArray[j] = result[j];
-            }
+        if (i == process.numberofChildProcesses - 2) {
+            break;
+        }
+        
+        // Else continue the merge process by merging the next pair of arrays
+        // Update the left array
+        leftArraySize += rightArraySize;
+        leftArray = (Record*)realloc(leftArray, sizeof(Record) * leftArraySize);
+        if (leftArray == NULL) { // Check for any errors
+            perror("Memory Error");
+            exit(1);
+        }
 
-            rightArraySize = recordsCounts[i + 2];
-            rightArray = (Record*)realloc(rightArray, sizeof(Record) * rightArraySize);
-            for (unsigned int j = 0; j < rightArraySize; j++) {
-                rightArray[j] = records[i + 2][j];
-            }
-            
-            unsigned int newResultArraySize = leftArraySize + rightArraySize;
-            result = (Record*)realloc(result, sizeof(Record) * newResultArraySize);
+        for (unsigned int j = 0; j < leftArraySize; j++) {
+            leftArray[j] = result[j];
+        }
+
+        // Update the right array
+        rightArraySize = recordsCounts[i + 2];
+        rightArray = (Record*)realloc(rightArray, sizeof(Record) * rightArraySize);
+        if (rightArray == NULL) { // Check for any errors
+            perror("Memory Error");
+            exit(1);
+        }
+        
+        for (unsigned int j = 0; j < rightArraySize; j++) {
+            rightArray[j] = records[i + 2][j];
+        }
+        
+        // Update the result array
+        unsigned int newResultArraySize = leftArraySize + rightArraySize;
+        result = (Record*)realloc(result, sizeof(Record) * newResultArraySize);
+        if (result == NULL) { // Check for any errors
+            perror("Memory Error");
+            exit(1);
         }
     }
 
+    // Copy the elements of the result array to the result array and return it
     for (unsigned int i = 0; i < process.processRecords; i++) {
         mergedRecords[i] = result[i];
     }
 
+    // Free up memory
     free(leftArray);
     free(rightArray);
     free(result);
@@ -82,38 +129,58 @@ static Record* mergeRecords(WSRM_process process, Record** records, unsigned int
     return mergedRecords;
 }
 
+/**
+ * @brief Initializes the Work-Spliter and Result-Merger by applying to it the appropriate data
+ * 
+ * @param process the current Work-Spliter and Result-Merger process
+ * @param process_data the data of the current Work-Spliter and Result-Merger process
+ */
 void WSRM_init(WSRM_process* process, WSRM_data* process_data)
 {
+    // Initialize the input filename and the child processes count
     process->processIndex = process_data->processIndex;
     process->inputFileName = process_data->inputFileName;
     process->numberofChildProcesses = process_data->numberofChildProcesses;
 
+    // Initialize the sorting algorithms
     process->sortingAlgorithm1 = process_data->sortingAlgorithm1;
     process->sortingAlgorithm2 = process_data->sortingAlgorithm2;
 
+    // Initialize the process id and the records count in the input file
     process->processId = getpid();
     process->numberOfRecords = process_data->numberOfRecords;
-    if ((process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
 
-    if ((process->parent_to_child_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
-    if ((process->child_to_parent_fd = (int**)malloc(sizeof(int*) * process->numberofChildProcesses)) == NULL) { perror("Memory Error"); exit(1); }
+    // Initialize arrays for the child ids, and the pipes for intel-process communication
+    process->childProcessesIds = (pid_t*)malloc(sizeof(pid_t) * process->numberofChildProcesses);
+    process->parent_to_child_fd = (int**)malloc(sizeof(int*)  * process->numberofChildProcesses);
+    process->child_to_parent_fd = (int**)malloc(sizeof(int*)  * process->numberofChildProcesses);
+
+    if (!process->childProcessesIds || !process->parent_to_child_fd || !process->child_to_parent_fd) { // Check for any errors
+        perror("Memory Error"); 
+        exit(1); 
+    }
     
+    // Allocating memory for the pipes communication arrays
     for (unsigned int i = 0; i < process->numberofChildProcesses; i++) {
         if ((process->parent_to_child_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
         if ((process->child_to_parent_fd[i] = (int*)malloc(sizeof(int) * 2)) == NULL) { perror("Memory Error"); exit(1); }
     }
 
-    process->read_fd = process_data->read_fd;
+    process->read_fd  = process_data->read_fd;
     process->write_fd = process_data->write_fd;
 
     DataFrom_CSMR receivedData;
     read(process->read_fd, &receivedData, sizeof(DataFrom_CSMR));
 
     process->recordStartIndex = receivedData.recordStartIndex;
-    process->recordEndIndex = receivedData.recordEndIndex;
-    process->processRecords = receivedData.recordEndIndex - receivedData.recordStartIndex + 1;
+    process->recordEndIndex   = receivedData.recordEndIndex;
+    process->processRecords   = receivedData.recordEndIndex - receivedData.recordStartIndex + 1;
 }
 
+/**
+ * @brief Deletes the memory used for the Work-Spliter and Result-Merger process
+ * @param process the current Work-Spliter and Result-Merger process
+ */
 void WSRM_delete(WSRM_process* process)
 {
     free(process->childProcessesIds);
@@ -127,6 +194,10 @@ void WSRM_delete(WSRM_process* process)
     free(process->child_to_parent_fd);
 }
 
+/**
+ * @brief Runs the Work-Spliter and Result-Merger process
+ * @param process the current Work-Spliter and Result-Merger process
+ */
 void WSRM_run(WSRM_process* process)
 {
     // sleep(process->processIndex);
@@ -292,6 +363,10 @@ void WSRM_run(WSRM_process* process)
     free(recordsRangeToSort);
 }
 
+/**
+ * @brief Represents the Work-Spliter and Result-Merger process
+ * @param process the current Work-Spliter and Result-Merger process
+ */
 void WSRM_print(WSRM_process* process)
 {
     printf("\nHello from the Work-Spliter and Result-Merger %d with:\n", process->processId);
