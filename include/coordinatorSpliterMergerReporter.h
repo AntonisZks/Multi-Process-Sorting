@@ -39,7 +39,7 @@ typedef struct CoordinatorSpliterMergerReporter
     unsigned int numberofChildProcesses;
     unsigned int numberOfRecords;
     unsigned int processRecords;
-    
+
     pid_t* childProcessesIds;
     pid_t  processId;
 

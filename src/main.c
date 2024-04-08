@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     CSMR_run(&rootProcess);
 
     CSMR_delete(&rootProcess);
-    
+
     return 0;
 }
 
